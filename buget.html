@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Finance Tracker (₹)</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f1f5f9;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #1e293b;
+    }
+
+    form {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    input, select, button {
+      flex: 1 1 45%;
+      padding: 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+    }
+
+    button {
+      background-color: #3b82f6;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #2563eb;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      background: #f8fafc;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-left: 6px solid;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    li.income {
+      border-color: #22c55e;
+    }
+
+    li.expense {
+      border-color: #ef4444;
+    }
+
+    li button {
+      background: none;
+      border: none;
+      color: #ef4444;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .summary {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 480px) {
+      input, select, button {
+        flex: 1 1 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>💰 Finance Tracker (₹)</h1>
+    <form id="transaction-form">
+      <input type="text" id="desc" placeholder="Description" required />
+      <input type="number" id="amount" placeholder="Amount (₹)" required />
+      <select id="type">
+        <option value="income">Income</option>
+        <option value="expense">Expense</option>
+      </select>
+      <button type="submit">Add</button>
+    </form>
+
+    <div class="summary">
+      <canvas id="chart" width="300" height="300"></canvas>
+    </div>
+
+    <ul id="transaction-list"></ul>
+  </div>
+
+  <script>
+    const form = document.getElementById('transaction-form');
+    const list = document.getElementById('transaction-list');
+    const descInput = document.getElementById('desc');
+    const amountInput = document.getElementById('amount');
+    const typeSelect = document.getElementById('type');
+    const chartCanvas = document.getElementById('chart');
+
+    let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+
+    function saveAndRender() {
+      localStorage.setItem('transactions', JSON.stringify(transactions));
+      renderList();
+      renderChart();
+    }
+
+    function renderList() {
+      list.innerHTML = '';
+      transactions.forEach((t, index) => {
+        const li = document.createElement('li');
+        li.className = t.type;
+        const amount = Math.abs(t.amount).toFixed(2);
+        li.innerHTML = `
+          <span>${t.desc} - ₹${amount}</span>
+          <button onclick="deleteTransaction(${index})">×</button>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    function deleteTransaction(index) {
+      transactions.splice(index, 1);
+      saveAndRender();
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const desc = descInput.value.trim();
+      const amount = parseFloat(amountInput.value);
+      const type = typeSelect.value;
+
+      if (!desc || isNaN(amount)) return;
+
+      transactions.push({ desc, amount: type === 'income' ? amount : -amount, type });
+      descInput.value = '';
+      amountInput.value = '';
+      saveAndRender();
+    });
+
+    let chart;
+
+    function renderChart() {
+      const income = transactions.filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const expense = transactions.filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+      if (chart) chart.destroy();
+
+      chart = new Chart(chartCanvas, {
+        type: 'pie',
+        data: {
+          labels: ['Income (₹)', 'Expenses (₹)'],
+          datasets: [{
+            data: [income, expense],
+            backgroundColor: ['#22c55e', '#ef4444'],
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+    }
+
+    saveAndRender();
+  </script>
+</body>
+</html>
